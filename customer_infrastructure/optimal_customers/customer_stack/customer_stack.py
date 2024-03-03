@@ -11,16 +11,11 @@ from aws_cdk import (
     aws_elasticloadbalancingv2 as elbv2,
     aws_s3 as s3,
     aws_servicediscovery as sd,
-    Tags,
-    Duration
+    Duration,
+    Tags
 )
 import os
 
-# DEFAULT_ACCOUNT = (os.environ['CDK_DEFAULT_ACCOUNT'])
-# DEFAULT_REGION = (os.environ['CDK_DEFAULT_REGION'])
-# AWS_DEFAULT_REGION = (os.environ['CDK_DEFAULT_REGION'])
-# DEPLOYMENT_ENVIRONMENT = os.environ['DEPLOYMENT_ENVIRONMENT']
-# DEFAULT_REGION = AWS_DEFAULT_REGION
 
 DEFAULT_ACCOUNT = (os.environ['CDK_DEFAULT_ACCOUNT'])
 DEFAULT_REGION = (os.environ['CDK_DEFAULT_REGION'])
@@ -28,7 +23,7 @@ DEPLOYMENT_ENVIRONMENT = os.environ['DEPLOYMENT_ENVIRONMENT']
 
 class CustomerStack(cdk.Stack):
 
-    def __init__(self, scope: cdk.App, construct_id: str, customer_name, cluster_name, cluster_arn, customer_load_balancer_sg_id, maint_host_sg, security_group, customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id, lambda_subnet_a_id, lambda_subnet_b_id, listener, priority, private_dns_namespace, private_dns_namespace_arn, vpc, **kwargs) -> None:
+    def __init__(self, scope: cdk.App, construct_id: str, customer_name, cluster_name, customer_load_balancer_sg_id, maint_host_sg, security_group, customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id, lambda_subnet_a_id, lambda_subnet_b_id, listener, priority, private_dns_namespace, private_dns_namespace_arn, vpc, **kwargs) -> None:
 
         super().__init__(scope, construct_id, **kwargs)
         
@@ -45,18 +40,13 @@ class CustomerStack(cdk.Stack):
         if os.environ['DEPLOYMENT_ENVIRONMENT'] == 'sandbox':
             memory_limit_mib = 8192
             cpu = 2048
-            #customer_control_center_certificate_arn = 'arn:aws:acm:us-east-2:545244250143:certificate/3416caf4-3c09-4ab5-9bc0-134623a96378'
-            #removing password setting because they said it was causing problems the container.
-            #control_center_gateway_admin_username = f'{customer_name}-admin'
-            #control_center_gateway_admin_password = f'{customer_name}-admin-password'
             dep_env_prefix = 'dev-'
         elif os.environ['DEPLOYMENT_ENVIRONMENT'] == 'production':
             memory_limit_mib = 8192
             cpu = 2048
-            #customer_control_center_certificate_arn = ''
             dep_env_prefix = ''
             
-        # Enumerate usable array of customer subnets
+        # Enumerate usable array of customer subnets (creating a usable customer_subnets array from imported IDs)
         customer_subnet_ids = [customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id]
 
         # Import subnets using their IDs
@@ -71,7 +61,7 @@ class CustomerStack(cdk.Stack):
             )
             customer_subnets.append(subnet)
             
-        # Enumerate usable array of lambda subnets
+        # Enumerate usable array of lambda subnets (creating a usable lambda_subnets array from imported IDs)
         lambda_subnet_ids = [lambda_subnet_a_id, lambda_subnet_b_id]
 
         # Import subnets using their IDs
@@ -172,15 +162,6 @@ class CustomerStack(cdk.Stack):
                         f'arn:aws:logs:{DEFAULT_REGION}:{DEFAULT_ACCOUNT}:log-group:/optimal/customer_control_center:*'
                     ]
                 },
-                # {
-                #     'Effect': 'Allow',
-                #     'Action': [
-                #         'elasticfilesystem:*'
-                #     ],
-                #     'Resource': [
-                #         f'arn:aws:elasticfilesystem:{DEFAULT_REGION}:{DEFAULT_ACCOUNT}:*'
-                #     ]
-                # }
             ]
         }
         
@@ -196,7 +177,6 @@ class CustomerStack(cdk.Stack):
 # ....................................................       
 # Customer ECS FARGATAE Service
 # ....................................................
-        #customer_subnet_array = [customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id]
         # Create an EFS file system
         customer_control_center_efs_data_file_system = efs.FileSystem(self, f"{customer_name}ControlCenterEfsDataFileSystem",
             vpc=vpc,
@@ -209,7 +189,6 @@ class CustomerStack(cdk.Stack):
         customer_control_center_efs_data_volume = ecs.Volume(name=f"{customer_name}_control_center_efs_data_volume", efs_volume_configuration=ecs.EfsVolumeConfiguration(
             file_system_id=customer_control_center_efs_data_file_system.file_system_id,
             root_directory="/",
-            #transit_encryption='ENABLED'
             )
         )
         customer_control_center_efs_data_file_system.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
@@ -237,8 +216,6 @@ class CustomerStack(cdk.Stack):
                 "GATEWAY_NETWORK_#_HOST": f"{dep_env_prefix}controlcenter.optimal.local",
                 "GATEWAY_NETWORK_#_PORT": "8060",
                 "GATEWAY_SYSTEM_NAME": f"{customer_name}",
-                #"GATEWAY_ADMIN_USERNAME": control_center_gateway_admin_username,
-                #"GATEWAY_ADMIN_PASSWORD": control_center_gateway_admin_password,
                 "GATEWAY_MODULES_ENABLED": "perspective,tag-historian,opc-ua,modbus-driver-v2,vision,sql-bridge,opc-ua,symbol-factory",
                 "IGNITION_EDITION": "standard",
                 "TZ": "America/Chicago"
@@ -246,7 +223,6 @@ class CustomerStack(cdk.Stack):
             logging=ecs.LogDriver.aws_logs(stream_prefix=f'/{customer_name}-control-center-task', log_group=optimal_control_center_log_group),
             #port_mappings=[ecs.PortMapping(container_port=8043), ecs.PortMapping(container_port=8088)],
             port_mappings=[ecs.PortMapping(container_port=8043)],
-            #port_mappings=[ecs.PortMapping(container_port=8088)],
             stop_timeout=Duration.seconds(10)
         )
         # I am not convinced this logic was needed but at one point i had one ecs task mapping all efs paritions... 
@@ -270,10 +246,7 @@ class CustomerStack(cdk.Stack):
             cluster_name=cluster_name,
             vpc=vpc,
             security_groups=[security_group_usable, customer_sg]
-            # Ensure you provide or retrieve other necessary attributes as needed
-            # such as security groups, VPC, etc., depending on your use case
         )
-
 
         namespace = sd.PrivateDnsNamespace.from_private_dns_namespace_attributes(
             self, "ImportedNamespace",
@@ -287,7 +260,6 @@ class CustomerStack(cdk.Stack):
             desired_count=1, 
             cloud_map_options=ecs.CloudMapOptions(
                 cloud_map_namespace=namespace,
-                
                 name=f"{customer_name}"
             ),
             cluster=cluster_imported,
@@ -296,11 +268,13 @@ class CustomerStack(cdk.Stack):
             task_definition=customer_control_center_task_definition,
             vpc_subnets=ec2.SubnetSelection(
                 subnets=customer_subnets,
-                #subnets=[customer_subnet_array[0], customer_subnet_array[1], customer_subnet_array[2]],
             ),
         )
         customer_control_center_service.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-
+        # Add tags to the ECS service
+        # cdk.Tags.of(customer_control_center_service).add("Environment", DEPLOYMENT_ENVIRONMENT)
+        # cdk.Tags.of(customer_control_center_service).add("cost_center", customer_name)
+        
         customer_control_center_service_health_check = elbv2.HealthCheck(path='/', healthy_http_codes='200,302', unhealthy_threshold_count=2)
 
         customer_control_center_service_target_group = elbv2.ApplicationTargetGroup(self, f'{customer_name}_control_center_tg',
@@ -311,8 +285,6 @@ class CustomerStack(cdk.Stack):
             health_check=customer_control_center_service_health_check,
             vpc=vpc
         )
-        
-        listener_arn = "arn:aws:elasticloadbalancing:region:account-id:listener/app/load-balancer-name/load-balancer-id/listener-id"
 
         rule = elbv2.CfnListenerRule(self, "MyListenerRule",
             actions=[{
@@ -327,12 +299,6 @@ class CustomerStack(cdk.Stack):
             priority=priority
         )
         
-        # customer_control_center_listener_rule_443 = elbv2.ApplicationListenerRule(self, f'{customer_name}_control_center_listener_rule_443',
-        #     listener=listener,
-        #     priority=priority,
-        #     action=elbv2.ListenerAction.forward(target_groups=[customer_control_center_service_target_group]),
-        #     conditions=[elbv2.ListenerCondition.host_headers([f'{dep_env_prefix}{customer_name}.optimalpipeline.io'])],
-        # )
         customer_control_center_service_target_group.add_target(customer_control_center_service)
         
 ##################################
@@ -415,13 +381,10 @@ class CustomerStack(cdk.Stack):
         )
    # Create a Fargate task definition
         customer_control_center_init_task_definition = ecs.FargateTaskDefinition(self, f'{customer_name}_control_center_init_task_definition',
-            #memory_limit_mib=memory_limit_mib,
-            #cpu=cpu,
             memory_limit_mib=512,
             cpu=256,
             family=f'{customer_name}_control_center_init_task',
             task_role=customer_control_center_init_role,
-            #volumes=[optimal_control_center_primary_efs_data_volume]
             volumes=[customer_control_center_efs_data_volume]
         )
         
@@ -457,8 +420,6 @@ class CustomerStack(cdk.Stack):
                     read_only=False
                 )
             )
-            
-        #customer_cluster = ecs.Cluster.from_cluster_arn(self, 'customer_cluster', cluster_arn=cluster_arn)
         
         customer_control_center_init_service = ecs.FargateService(self, f'{customer_name}_control_center_init_service', 
             cluster=cluster_imported,
@@ -570,14 +531,13 @@ class CustomerStack(cdk.Stack):
         )
         
         # Create the Lambda function
-        #lambda_subnet_array = [lambda_subnet_a_id, lambda_subnet_b_id]
         customer_control_panel_gwbk_s3_copy_lambda = _lambda.Function(
             self, f"{customer_name}_control_panel_gwbk_s3_copy_lambda",
             description=f"{customer_name} lambda to copy new gwbk from s3 to efs when a new gwbk is copied to s3.",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="lambda_function.lambda_handler",
             function_name=f"{customer_name}_control_panel_gwbk_s3_copy_lambda",
-            #log_retention=logs.RetentionDays.ONE_MONTH,
+            log_retention=logs.RetentionDays.ONE_MONTH,
             code=_lambda.Code.from_asset("customer_infrastructure/optimal_customers/restore_file_lambda/"),  # Place your Lambda code in a 'control_center_init_lambda' directory
             environment={
                 'CUSTOMER_NAME': customer_name,
@@ -592,7 +552,6 @@ class CustomerStack(cdk.Stack):
             ),
             filesystem=_lambda.FileSystem.from_efs_access_point(
                 ap=access_point,
-                #efs_access_point_id=optimal_control_center_efs_file_system,  # Replace with your EFS access point ID
                 mount_path="/mnt/efs"
             )
         )

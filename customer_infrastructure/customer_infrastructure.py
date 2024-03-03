@@ -3,16 +3,16 @@ from aws_cdk import (
     aws_ec2 as ec2,
     #aws_ssm as ssm,
     App, 
-    Stack
+    Stack,
+    Tags
 )
 import os
 import boto3
+
 # Create a session using AWS credentials and configuration
 session = boto3.Session()
-# Create an SSM client from the session
 ssm = session.client('ssm')
 
-#from optimal_infrastructure.optimal_control_center.optimal_control_center_stack import OptimalControlCenterStack
 from customer_infrastructure.optimal_customers.customer_stack.customer_stack import CustomerStack
 
 vpc_id_parameter_name = "/infrastructure/optimal_vpc_id"
@@ -75,18 +75,10 @@ response = ssm.get_parameter(Name=customer_control_center_fargate_cluster_name_p
 customer_control_center_fargate_cluster_name = response['Parameter']['Value']
 print(customer_control_center_fargate_cluster_name)
 
-customer_control_center_fargate_cluster_arn_parameter_name = "/infrastructure/customer_control_center_fargate_cluster_arn"
-response = ssm.get_parameter(Name=customer_control_center_fargate_cluster_arn_parameter_name, WithDecryption=True)
-customer_control_center_fargate_cluster_arn = response['Parameter']['Value']
-print(customer_control_center_fargate_cluster_arn)
-
 customer_load_balancer_sg_id_name = "/infrastructure/customer_load_balancer_sg_id"
 response = ssm.get_parameter(Name=customer_load_balancer_sg_id_name, WithDecryption=True)
 customer_load_balancer_sg_id = response['Parameter']['Value']
 print(customer_load_balancer_sg_id)
-
-
-
 
 DEPLOYMENT_ENVIRONMENT = os.environ['DEPLOYMENT_ENVIRONMENT']
 
@@ -162,7 +154,6 @@ class OptimalStack(Stack):
             priority = priority + 1
             CustomerStack(self, f'{customer_name}-stack',
                 cluster_name=customer_control_center_fargate_cluster_name,
-                cluster_arn=customer_control_center_fargate_cluster_arn,
                 customer_name = f'{customer_name}',
                 customer_load_balancer_sg_id = customer_load_balancer_sg_id,
                 listener=customer_control_center_443_listener_arn,
@@ -178,8 +169,4 @@ class OptimalStack(Stack):
                 lambda_subnet_b_id=lambda_subnet_b_id,
                 vpc=vpc
             )
-        
-        # Tags.of(CustomerStack).add('environment', DEPLOYMENT_ENVIRONMENT)
-        # Tags.of(optimal_infrastructure).add('cdkRepo', 'https://github.com/PatrickKlingensmith/infrastructure.optimal')
-        # Tags.of(optimal_infrastructure).add('cost_center', 'Optimal_infrastructure')
-        # Tags.of(optimal_infrastructure).add('environment', DEPLOYMENT_ENVIRONMENT)
+            

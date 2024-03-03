@@ -1,0 +1,60 @@
+name: Customer control center restore files update
+on:
+  # push:
+  #   #branches: [ develop ]
+  #   paths: 
+  #      - 'optimal_infrastructure/optimal_customers/control_center_restore_files/customer1/**'
+  #      - 'optimal_infrastructure/optimal_customers/control_center_restore_files/customer2/**'
+  #      - '.github/workflows/customer_control_center_copy_restore_files_zip_to_s3.yaml'
+    #types: [closed]
+  workflow_dispatch:
+    inputs:
+      customer_name:
+        description: 'Customer Name'
+        required: true
+
+jobs:
+  build:
+    name: Detecting changed customer control center restore files
+    runs-on: ubuntu-latest
+    #if: github.event.pull_request.merged == true
+    steps:
+      - name: Setting env vars
+        shell: bash
+        run: |
+          if [ ${{ github.ref_name }} = "dev" ]; then
+          echo "AWS_DEFAULT_REGION=${{ secrets.OPTIMAL_DEV_CDK_DEFAULT_REGION }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.OPTIMAL_DEV_AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.OPTIMAL_DEV_AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "DEPLOYMENT_ENVIRONMENT=sandbox" >> $GITHUB_ENV
+          export DEPLOYMENT_ENVIRONMENT=sandbox
+          echo "Configured environment vars for deployment to: ${DEPLOYMENT_ENVIRONMENT}"
+          echo "DEP_ENV_PREFIX=dev-" >> $GITHUB_ENV
+          echo "S3_BUCKET_BASE=control-center-restore-files-bucket" >> $GITHUB_ENV
+          elif [ ${{ github.ref_name }} = "main" ]; then
+          echo "AWS_DEFAULT_REGION=${{ secrets.OPTIMAL_PROD_CDK_DEFAULT_REGION }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.OPTIMAL_PROD_AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.OPTIMAL_PROD_AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "DEPLOYMENT_ENVIRONMENT=production" >> $GITHUB_ENV
+          export DEPLOYMENT_ENVIRONMENT=production
+          echo "Configured environment vars for deployment to: ${DEPLOYMENT_ENVIRONMENT}"
+          echo "DEP_ENV_PREFIX=" >> $GITHUB_ENV
+          echo "S3_BUCKET_BASE=control-center-restore-files-bucket" >> $GITHUB_ENV
+          else
+          echo "Error, branch not compatible with configured deployment regions: ${{ github.ref_name }}"
+          echo "Must be dev or master branch."
+          exit 1
+          fi
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Copying restore files to s3 
+        run: |
+          cd customer_infrastructure/optimal_customers/control_center_restore_files/${{ github.event.inputs.customer_name }}
+          pwd
+          ls
+          aws s3 cp controlcenter-metro-keystore s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}
+          aws s3 cp controlcenter-uuid.txt s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}
+          aws s3 cp ${{ github.event.inputs.customer_name }}.gwbk s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}/${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}.gwbk
+          aws s3 cp ssl.pfx s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}

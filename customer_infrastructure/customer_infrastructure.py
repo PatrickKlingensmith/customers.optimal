@@ -80,6 +80,12 @@ response = ssm.get_parameter(Name=customer_control_center_fargate_cluster_arn_pa
 customer_control_center_fargate_cluster_arn = response['Parameter']['Value']
 print(customer_control_center_fargate_cluster_arn)
 
+customer_load_balancer_sg_id_name = "/infrastructure/customer_load_balancer_sg_id"
+response = ssm.get_parameter(Name=customer_load_balancer_sg_id_name, WithDecryption=True)
+customer_load_balancer_sg_id = response['Parameter']['Value']
+print(customer_load_balancer_sg_id)
+
+
 
 
 DEPLOYMENT_ENVIRONMENT = os.environ['DEPLOYMENT_ENVIRONMENT']
@@ -158,6 +164,7 @@ class OptimalStack(Stack):
                 cluster_name=customer_control_center_fargate_cluster_name,
                 cluster_arn=customer_control_center_fargate_cluster_arn,
                 customer_name = f'{customer_name}',
+                customer_load_balancer_sg_id = customer_load_balancer_sg_id,
                 listener=customer_control_center_443_listener_arn,
                 maint_host_sg=optimal_control_center_maintenance_host_sg_id,
                 private_dns_namespace=private_dns_namespace_id,

@@ -28,7 +28,7 @@ DEPLOYMENT_ENVIRONMENT = os.environ['DEPLOYMENT_ENVIRONMENT']
 
 class CustomerStack(cdk.Stack):
 
-    def __init__(self, scope: cdk.App, construct_id: str, customer_name, cluster_name, cluster_arn, maint_host_sg, security_group, customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id, lambda_subnet_a_id, lambda_subnet_b_id, listener, priority, private_dns_namespace, private_dns_namespace_arn, vpc, **kwargs) -> None:
+    def __init__(self, scope: cdk.App, construct_id: str, customer_name, cluster_name, cluster_arn, customer_load_balancer_sg_id, maint_host_sg, security_group, customer_subnet_a_id, customer_subnet_b_id, customer_subnet_c_id, lambda_subnet_a_id, lambda_subnet_b_id, listener, priority, private_dns_namespace, private_dns_namespace_arn, vpc, **kwargs) -> None:
 
         super().__init__(scope, construct_id, **kwargs)
         
@@ -122,13 +122,6 @@ class CustomerStack(cdk.Stack):
             connection=ec2.Port.tcp(2049),
             description=f"Allow NFS from {customer_name} init helper sg",
         )
-        
-        # Import the existing security group by its ID
-        # existing_sg = ec2.SecurityGroup.from_security_group_id(
-        #     self, "ExistingSG",
-        #     security_group_id=security_group_id
-        # )
-        # Add ingress rule for the customer control center from the maintenace host sg
         customer_control_center_efs_sg.add_ingress_rule(
             peer=ec2.SecurityGroup.from_security_group_id(
             self, "ExistingSG",
@@ -136,6 +129,14 @@ class CustomerStack(cdk.Stack):
             ),
             connection=ec2.Port.tcp(2049),
             description=f"Allow NFS from maintenance host sg",
+        )
+        customer_sg.add_ingress_rule(
+            peer=ec2.SecurityGroup.from_security_group_id(
+            self, "customer_load_balancer_sg_id",
+            security_group_id=customer_load_balancer_sg_id
+            ),
+            connection=ec2.Port.tcp(8043),
+            description=f"Allow HTTPS from customer_control_center_load_balancer sg",
         )
 # ....................................................       
 # Fargate IAM
@@ -225,7 +226,7 @@ class CustomerStack(cdk.Stack):
 
         customer_control_center_service_container = customer_control_center_task_definition.add_container(f'{customer_name}_control_center_service',
             container_name=f'{customer_name}_control_center',
-            command=["docker-entrypoint.sh -r /usr/local/bin/ignition/data/customer2.gwbk"],
+            command=[f"docker-entrypoint.sh -r /usr/local/bin/ignition/data/{dep_env_prefix}{customer_name}.gwbk"],
             entry_point=["sh","-c"],
             image=ecs.ContainerImage.from_registry("inductiveautomation/ignition:8.1.36"),
             memory_limit_mib=memory_limit_mib,
@@ -319,7 +320,7 @@ class CustomerStack(cdk.Stack):
                 "targetGroupArn": customer_control_center_service_target_group.target_group_arn  # Ensure you have a target group ARN
             }],
             conditions=[{
-                "field": "path-pattern",
+                "field": "host-header",
                 "values": [f'{dep_env_prefix}{customer_name}.optimalpipeline.io']
             }],
             listener_arn=listener,
@@ -332,7 +333,7 @@ class CustomerStack(cdk.Stack):
         #     action=elbv2.ListenerAction.forward(target_groups=[customer_control_center_service_target_group]),
         #     conditions=[elbv2.ListenerCondition.host_headers([f'{dep_env_prefix}{customer_name}.optimalpipeline.io'])],
         # )
-        # customer_control_center_service_target_group.add_target(customer_control_center_service)
+        customer_control_center_service_target_group.add_target(customer_control_center_service)
         
 ##################################
 # Control Center Init Container

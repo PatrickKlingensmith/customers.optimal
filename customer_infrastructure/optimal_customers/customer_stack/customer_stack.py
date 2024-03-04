@@ -212,7 +212,7 @@ class CustomerStack(cdk.Stack):
             environment={
                 "ACCEPT_IGNITION_EULA": "Y",
                 "DISABLE_QUICKSTART": "true",
-                "CONTROL_CENTER_RESTORE_FILE_NAME": f"{customer_name}.gwbk",
+                #"CONTROL_CENTER_RESTORE_FILE_NAME": f"{customer_name}.gwbk",
                 "GATEWAY_NETWORK_#_HOST": f"{dep_env_prefix}controlcenter.optimal.local",
                 "GATEWAY_NETWORK_#_PORT": "8060",
                 "GATEWAY_SYSTEM_NAME": f"{customer_name}",
@@ -400,7 +400,7 @@ class CustomerStack(cdk.Stack):
             memory_limit_mib=512,
             #essential=False,
             environment={
-                    "CONTROL_CENTER_RESTORE_FILE_NAME": f"{customer_name}.gwbk",
+                    "CONTROL_CENTER_RESTORE_FILE_NAME": f"{dep_env_prefix}{customer_name}.gwbk",
                     "S3_INIT_BUCKET": f"{dep_env_prefix}control-center-init-file-bucket",
                     "S3_RESTORE_BUCKET": f"{dep_env_prefix}{customer_name}-control-center-restore-files-bucket",
                     "EFS_MOUNT_POINT": "/mnt/efs",
@@ -541,7 +541,7 @@ class CustomerStack(cdk.Stack):
             code=_lambda.Code.from_asset("customer_infrastructure/optimal_customers/restore_file_lambda/"),  # Place your Lambda code in a 'control_center_init_lambda' directory
             environment={
                 'CUSTOMER_NAME': customer_name,
-                'CONTROL_CENTER_RESTORE_FILE_NAME': f'{customer_name}.gwbk',
+                'CONTROL_CENTER_RESTORE_FILE_NAME': f'{dep_env_prefix}{customer_name}.gwbk',
                 'GWBK_RESTORE_BUCKET': f'{dep_env_prefix}{customer_name}-control-center-restore-files-bucket'
             },
             role=customer_control_center_gwbk_lambda_role,

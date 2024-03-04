@@ -56,5 +56,5 @@ jobs:
           ls
           aws s3 cp controlcenter-metro-keystore s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}
           aws s3 cp controlcenter-uuid.txt s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}
-          #aws s3 cp ${{ github.event.inputs.customer_name }}.gwbk s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}/${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}.gwbk
+          aws s3 cp ${{ github.event.inputs.customer_name }}.gwbk s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}/${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}.gwbk
           aws s3 cp ssl.pfx s3://${{ env.DEP_ENV_PREFIX }}${{ github.event.inputs.customer_name }}-${{ env.S3_BUCKET_BASE }}

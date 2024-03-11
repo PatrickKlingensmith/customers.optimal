@@ -220,7 +220,8 @@ class CustomerStack(cdk.Stack):
                 "IGNITION_EDITION": "standard",
                 "TZ": "America/Chicago"
             },
-            logging=ecs.LogDriver.aws_logs(stream_prefix=f'/{customer_name}-control-center-task', log_group=optimal_control_center_log_group),
+            #logging jvm got too noisy and costly
+            #logging=ecs.LogDriver.aws_logs(stream_prefix=f'/{customer_name}-control-center-task', log_group=optimal_control_center_log_group),
             #port_mappings=[ecs.PortMapping(container_port=8043), ecs.PortMapping(container_port=8088)],
             port_mappings=[ecs.PortMapping(container_port=8043)],
             stop_timeout=Duration.seconds(10)
